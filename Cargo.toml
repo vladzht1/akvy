@@ -1,12 +1,13 @@
 [package]
 name = "akvy"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
 tokio = { version = "1.24.2", features = ["full"] }
 hyper = { version = "0.14", features = ["full"] }
 argparse = "0.2.2"
+num = "0.4"
 
 [profile.release]
 lto = true
