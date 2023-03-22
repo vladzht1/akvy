@@ -68,7 +68,7 @@ async fn main() {
     print_result(get_end().await);
 }
 
-// FIXME: this thread must shop when all the requests are processed
+// FIXME: this thread must stop when all the requests are processed
 async fn run_main_thread<'a>(url: Uri, requests_per_second: u32, max_requests: u32) {
     let mut interval = time::interval(Duration::from_micros(1_000_000 / requests_per_second as u64));
     let client = Client::new();
