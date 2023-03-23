@@ -15,7 +15,7 @@ use hyper::client::HttpConnector;
 
 use argparse::{ArgumentParser, Store};
 
-use utils::{is_https_url, has_web_protocol, print_start_info, set_default_if_negative_or_zero};
+use utils::*;
 use response::ResponseTime;
 
 static ERRORS: AtomicUsize = AtomicUsize::new(0);
@@ -31,7 +31,7 @@ async fn main() {
     let mut requests_per_second: u32 = DEFAULT_RPS;
     let mut max_requests: u32 = DEFAULT_MAX_REQUESTS;
 
-    // TODO: move this to a separate function
+    // TODO: find a better way to do this
     {
         let mut argument_parser = ArgumentParser::new();
         argument_parser.set_description("An application for automated stress testing of your APIs");
@@ -62,29 +62,33 @@ async fn main() {
     set_default_if_negative_or_zero(&mut requests_per_second, DEFAULT_RPS);
     set_default_if_negative_or_zero(&mut max_requests, DEFAULT_MAX_REQUESTS);
 
-    print_start_info(&url, &(requests_per_second as i32));
-    run_main_thread(url, requests_per_second as u32, max_requests as u32).await;
+    print_start_info(&url, &requests_per_second);
+    run_main_thread(url, requests_per_second, max_requests).await;
 
-    print_result(get_end().await);
+    // Print the result information on `Ctrl+C` interruption
+    listen_for_interruption().await;
+    print_result();
 }
 
-// FIXME: this thread must stop when all the requests are processed
-async fn run_main_thread<'a>(url: Uri, requests_per_second: u32, max_requests: u32) {
+async fn run_main_thread(url: Uri, requests_per_second: u32, max_requests: u32) {
     let mut interval = time::interval(Duration::from_micros(1_000_000 / requests_per_second as u64));
     let client = Client::new();
 
     tokio::spawn(async move {
         loop {
+            // FIXME:
+            // The `MORE or equal` sign is required because sometimes the counter doesn't react to the
+            // `equals` condition, so the loop gets over the bound and endlessly goes further
             if RESPONSE.lock().unwrap().get_count() >= max_requests {
-                println!("Must leave how");
-                break;
+                print_result();
+                exit(0);
             }
 
             let target_url = url.clone();
             let client = client.clone();
 
             tokio::spawn(async move {
-                get(target_url, client).await;
+                send_get_query(target_url, client).await;
             });
 
             interval.tick().await;
@@ -92,12 +96,12 @@ async fn run_main_thread<'a>(url: Uri, requests_per_second: u32, max_requests: u
     });
 }
 
-async fn get(uri: Uri, client: Client<HttpConnector>) {
+async fn send_get_query(uri: Uri, client: Client<HttpConnector>) {
     let start = Instant::now();
 
     match client.get(uri).await {
-        Ok(res) => {
-            if !res.status().is_success() {
+        Ok(response) => {
+            if !response.status().is_success() {
                 ERRORS.fetch_add(1, Relaxed);
             }
         },
@@ -109,10 +113,8 @@ async fn get(uri: Uri, client: Client<HttpConnector>) {
     RESPONSE.lock().unwrap().add(start.elapsed().as_millis() as u32);
 }
 
-async fn get_end() -> Duration {
-    let start = Instant::now();
+async fn listen_for_interruption() {
     signal(SignalKind::interrupt()).unwrap().recv().await;
-    return start.elapsed();
 }
 
 fn parse_target_url(url: String) -> Uri {
@@ -141,24 +143,31 @@ fn parse_target_url(url: String) -> Uri {
     return url.unwrap();
 }
 
-fn compute_errors_percentage(req: u32, err: &usize) -> f32 {
-    let res = (*err as f32 / req as f32) * 100.0;
+fn compute_errors_percentage(requests: u32, errors: &usize) -> f32 {
+    let result = (*errors as f32 / requests as f32) * 100.0;
 
-    if res > 0 as f32 {
-        return res;
+    if result > 0f32 {
+        return result;
     }
 
-    return 0 as f32;
+    return 0f32;
 }
 
-fn print_result(end: Duration) {
+fn get_result() -> Duration {
+    return Instant::now().elapsed();
+}
+
+fn print_result() {
+    let result = get_result();
+
     let response = RESPONSE.lock().unwrap();
     let errors = ERRORS.load(Relaxed);
 
     print!("\n\n");
-    println!("Elapsed:             {:.2?}", end);
+    println!("Elapsed:             {:.2?}", result);
     println!("Requests:            {}", response.get_count());
-    println!("Errors:              {}", errors);
+    println!(" - Success:          {}", response.get_count() - errors as u32);
+    println!(" - Errors:           {}", errors);
     println!("Percent of errors:   {:.2}%", compute_errors_percentage(response.get_count(), &errors));
     println!("Response time: \
                 \n - Min:              {}ms \

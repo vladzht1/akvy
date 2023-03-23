@@ -15,7 +15,7 @@ fn is_http_url(url: &String) -> bool {
     return url.contains("http://");
 }
 
-pub fn print_start_info(url: &Uri, requests_per_second: &i32) {
+pub fn print_start_info(url: &Uri, requests_per_second: &u32) {
     println!("Target URL: {}\nRequests per second: {}", url, requests_per_second);
 }
 
