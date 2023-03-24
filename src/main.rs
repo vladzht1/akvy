@@ -31,7 +31,6 @@ async fn main() {
     let mut requests_per_second: u32 = DEFAULT_RPS;
     let mut max_requests: u32 = DEFAULT_MAX_REQUESTS;
 
-    // TODO: find a better way to do this
     {
         let mut argument_parser = ArgumentParser::new();
         argument_parser.set_description("An application for automated stress testing of your APIs");
@@ -76,7 +75,6 @@ async fn run_main_thread(url: Uri, requests_per_second: u32, max_requests: u32) 
 
     tokio::spawn(async move {
         loop {
-            // FIXME:
             // The `MORE or equal` sign is required because sometimes the counter doesn't react to the
             // `equals` condition, so the loop gets over the bound and endlessly goes further
             if RESPONSE.lock().unwrap().get_count() >= max_requests {
