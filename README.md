@@ -1,34 +1,31 @@
-# Akvy - simple HTTP api stress-test.
+# Akvy - simple HTTP API stress-test util
 
-### Use on macOS
+## Usage
 
-    ./akvy -u http://localhost:8080 -r 100
+    ./akvy -u http://localhost:5000/api/users -r 1000 -m 10000
 
-    http://localhost:8080/ | 100
+    Target URL: http://localhost:5000/api/users
+    Requests per second: 1000
 
-    ^C        // Ctrl + C for stop
+    // Use can wait for all requests to be sent or...
+    ^C        // Ctrl + C for stop the application
 
     Elapsed:             3.50s
     Requests:            350
-    Errors:              0
+     - Success:          350
+     - Errors:           0
     Percent of errors:   0.00%
     Response time:
     - Min:               0ms
     - Max:               11ms
     - Average:           1ms
 
-### Compile for other OS
+## Compile youself
 
 #### [Rust](https://www.rust-lang.org) must be installed.
-
-        
-    cd ./path/to/project
-
-[]()
-
+    // Execute this commands in the project directory
     cargo build --release
 
 ##### The binary file will be located in the directory
-    
-    ../target/release
 
+    ../target/release
